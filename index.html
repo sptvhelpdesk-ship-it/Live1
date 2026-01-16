@@ -3,22 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>S-PTV Player (JSON 1)</title>
+    <title>S-PTV Player</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.ui.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     
     <style>
+        /* বডি: ভিডিও ঠিক মাঝখানে রাখবে */
         body { 
             background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; 
             margin: 0; padding: 0; width: 100vw; height: 100vh; 
-            overflow: hidden; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; 
+            display: flex; align-items: center; justify-content: center; /* সেন্টার পজিশন */
         }
 
+        /* ভিডিও বক্স: ১৬:৯ সাইজ ফিক্সড (এতেই বাটন ভিডিওর সাথে লেগে থাকবে) */
         .video-container { 
-            width: 100%; height: 100%; background: black; position: relative; 
+            width: 100%; 
+            max-width: 1000px; /* পিসিতে বেশি বড় হবে না */
+            aspect-ratio: 16/9; /* আসল টিভি সাইজ */
+            background: #000; 
+            position: relative; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
+        
         video { width: 100%; height: 100%; object-fit: contain; }
 
+        /* স্পিনার */
         .spinner {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 60px; height: 60px; border: 5px solid rgba(255,255,255,0.2);
@@ -27,6 +37,7 @@
         }
         @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
 
+        /* সেন্টার বাটন */
         .center-overlay {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             display: flex; align-items: center; gap: 40px; z-index: 10; opacity: 0; transition: opacity 0.3s;
@@ -39,14 +50,13 @@
         .center-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.2); }
         .material-icons.large { font-size: 45px; } .material-icons.medium { font-size: 30px; }
 
+        /* --- কন্ট্রোলস (ভিডিওর ফ্রেমের ভেতরে একদম নিচে) --- */
         .custom-controls {
             position: absolute; 
-            bottom: 60px; /* ভিডিওর ভেতরে ভাসবে */
-            left: 10px; right: 10px;
-            background: rgba(0,0,0,0.6); 
-            padding: 10px; border-radius: 10px;
-            box-sizing: border-box;
-            display: flex; flex-direction: column; gap: 8px; 
+            bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 10px 15px; box-sizing: border-box;
+            display: flex; flex-direction: column; gap: 5px; 
             opacity: 0; transition: opacity 0.3s; z-index: 20;
         }
 
@@ -60,6 +70,7 @@
         .material-icons { font-size: 28px; text-shadow: 0 0 5px rgba(0,0,0,0.8); }
         .time-text { font-size: 13px; font-weight: bold; margin-left: 5px; cursor: pointer; text-shadow: 0 0 5px rgba(0,0,0,0.8); }
 
+        /* পপআপ মেনু */
         .popup-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 30; display: none; }
         .popup-menu {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -109,7 +120,7 @@
     <script>
         // ==========================================
         const CF_WORKER = ''; 
-        // JSON 1 লিংক এখানে বসানো হলো
+        // JSON 1 লিংক
         const DATABASE_URL = 'https://raw.githubusercontent.com/Shubhamkur/Tv/refs/heads/main/tv';
         // ==========================================
 
@@ -146,7 +157,6 @@
             }
         }
 
-        // --- JSON 1 থেকে ডাটা ফেচিং ---
         async function fetchGitHubData(targetId) {
             try {
                 const response = await fetch(DATABASE_URL);
@@ -167,7 +177,7 @@
 
         async function loadPlayer(url, k1, k2) {
             errorMsg.style.display = 'none';
-            // 🔥 Force Live Edge Logic
+            // ফাস্ট স্টার্ট + নো ডিলে
             const config = {
                 streaming: { 
                     bufferingGoal: 0.5, 
