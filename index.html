@@ -6,29 +6,53 @@
     <title>S-PTV Player</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.ui.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
     
     <style>
-        /* বডি: ভিডিও ঠিক মাঝখানে রাখবে */
         body { 
             background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; 
             margin: 0; padding: 0; width: 100vw; height: 100vh; 
-            overflow: hidden; 
-            display: flex; align-items: center; justify-content: center; /* সেন্টার পজিশন */
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
         }
 
-        /* ভিডিও বক্স: ১৬:৯ সাইজ ফিক্সড (এতেই বাটন ভিডিওর সাথে লেগে থাকবে) */
         .video-container { 
-            width: 100%; 
-            max-width: 1000px; /* পিসিতে বেশি বড় হবে না */
-            aspect-ratio: 16/9; /* আসল টিভি সাইজ */
-            background: #000; 
-            position: relative; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            width: 100%; max-width: 1000px; aspect-ratio: 16/9; 
+            background: #000; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         
         video { width: 100%; height: 100%; object-fit: contain; }
 
-        /* স্পিনার */
+        /* --- Branding (Logo + Text) --- */
+        .brand-overlay {
+            position: absolute; 
+            top: 10px; right: 10px; 
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: center;
+            z-index: 50; 
+            opacity: 0.7; /* Slight opacity */
+            pointer-events: none;
+        }
+
+        .brand-logo {
+            width: 25px; /* Logo resized smaller */
+            height: auto;
+            margin-bottom: -2px; /* Gap reduced */
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+        }
+
+        .brand-text {
+            font-family: 'Permanent Marker', cursive;
+            font-size: 7px; /* Font size reduced */
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+            letter-spacing: 0.5px;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            line-height: 1;
+        }
+
+        /* Spinner */
         .spinner {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 60px; height: 60px; border: 5px solid rgba(255,255,255,0.2);
@@ -37,7 +61,7 @@
         }
         @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
 
-        /* সেন্টার বাটন */
+        /* Center Buttons */
         .center-overlay {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             display: flex; align-items: center; gap: 40px; z-index: 10; opacity: 0; transition: opacity 0.3s;
@@ -50,7 +74,7 @@
         .center-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.2); }
         .material-icons.large { font-size: 45px; } .material-icons.medium { font-size: 30px; }
 
-        /* --- কন্ট্রোলস (ভিডিওর ফ্রেমের ভেতরে একদম নিচে) --- */
+        /* Custom Controls */
         .custom-controls {
             position: absolute; 
             bottom: 0; left: 0; width: 100%;
@@ -70,7 +94,7 @@
         .material-icons { font-size: 28px; text-shadow: 0 0 5px rgba(0,0,0,0.8); }
         .time-text { font-size: 13px; font-weight: bold; margin-left: 5px; cursor: pointer; text-shadow: 0 0 5px rgba(0,0,0,0.8); }
 
-        /* পপআপ মেনু */
+        /* Popup Menu */
         .popup-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 30; display: none; }
         .popup-menu {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -84,15 +108,22 @@
     </style>
 </head>
 <body>
-    <div class="video-container" id="video-container" onclick="toggleControls()">
+    <div class="video-container" id="video-container" onclick="handleContainerClick()">
         <video id="video" autoplay playsinline></video>
+        
+        <!-- Branding (Logo + Text) -->
+        <div class="brand-overlay">
+            <img src="https://i.ibb.co/Xr4DHqDL/1000298705-removebg-preview.png" class="brand-logo" alt="Logo">
+            <span class="brand-text">SPORTIFY TV</span>
+        </div>
+
         <div id="error-msg">Loading...</div>
         <div class="spinner" id="buffering-spinner"></div>
 
         <div class="center-overlay" id="center-controls">
-            <button class="center-btn" onclick="event.stopPropagation(); skip(-10)"><span class="material-icons medium">replay_10</span></button>
-            <button class="center-btn" onclick="event.stopPropagation(); togglePlay()"><span class="material-icons large" id="center-play-icon">pause</span></button>
-            <button class="center-btn" onclick="event.stopPropagation(); skip(10)"><span class="material-icons medium">forward_10</span></button>
+            <button class="center-btn" onclick="event.stopPropagation(); triggerAd(); skip(-10)"><span class="material-icons medium">replay_10</span></button>
+            <button class="center-btn" onclick="event.stopPropagation(); triggerAd(); togglePlay()"><span class="material-icons large" id="center-play-icon">pause</span></button>
+            <button class="center-btn" onclick="event.stopPropagation(); triggerAd(); skip(10)"><span class="material-icons medium">forward_10</span></button>
         </div>
 
         <div class="popup-overlay" id="popup-overlay" onclick="closeAllMenus()"></div>
@@ -100,18 +131,18 @@
         <div class="popup-menu" id="audio-menu"></div>
 
         <div class="custom-controls" id="controls" onclick="event.stopPropagation()">
-            <div class="seek-bar-container" onclick="seekVideo(event)"><div class="seek-fill" id="seek-fill"></div></div>
+            <div class="seek-bar-container" onclick="triggerAd(); seekVideo(event)"><div class="seek-fill" id="seek-fill"></div></div>
             <div class="buttons-row">
                 <div class="left-buttons">
-                    <button class="icon-btn" onclick="togglePlay()"><span class="material-icons" id="play-icon">pause</span></button>
-                    <button class="icon-btn" onclick="toggleMute()"><span class="material-icons" id="vol-icon">volume_up</span></button>
+                    <button class="icon-btn" onclick="triggerAd(); togglePlay()"><span class="material-icons" id="play-icon">pause</span></button>
+                    <button class="icon-btn" onclick="triggerAd(); toggleMute()"><span class="material-icons" id="vol-icon">volume_up</span></button>
                     <span class="time-text" id="time-display" onclick="goLive()">0:00</span>
                 </div>
                 <div class="right-buttons">
-                    <button class="icon-btn" onclick="openMenu('quality-menu')"><span class="material-icons">settings</span></button>
-                    <button class="icon-btn" onclick="openMenu('audio-menu')"><span class="material-icons">language</span></button>
-                    <button class="icon-btn" onclick="togglePiP()"><span class="material-icons">picture_in_picture_alt</span></button>
-                    <button class="icon-btn" onclick="toggleFull()"><span class="material-icons">fullscreen</span></button>
+                    <button class="icon-btn" onclick="triggerAd(); openMenu('quality-menu')"><span class="material-icons">settings</span></button>
+                    <button class="icon-btn" onclick="triggerAd(); openMenu('audio-menu')"><span class="material-icons">language</span></button>
+                    <button class="icon-btn" onclick="triggerAd(); togglePiP()"><span class="material-icons">picture_in_picture_alt</span></button>
+                    <button class="icon-btn" onclick="triggerAd(); toggleFull()"><span class="material-icons">fullscreen</span></button>
                 </div>
             </div>
         </div>
@@ -120,9 +151,38 @@
     <script>
         // ==========================================
         const CF_WORKER = ''; 
-        // JSON 1 লিংক
         const DATABASE_URL = 'https://api1.sptvhelpdesk.workers.dev/';
+        const AD_LINK = 'https://www.effectivegatecpm.com/w6q9i150y?key=4b08b19ec61654084667a37e370d6f99'; 
         // ==========================================
+
+        // --- Smart Ad Logic ---
+        let canShowAd = false;
+        
+        // Ad ready after 4 minutes
+        setTimeout(() => {
+            canShowAd = true;
+            console.log("Ad Ready");
+        }, 240000); 
+
+        // Trigger Ad
+        function triggerAd() {
+            if (canShowAd) {
+                window.open(AD_LINK, '_blank'); 
+                canShowAd = false; 
+                
+                // Ad ready again after 15 minutes
+                setTimeout(() => {
+                    canShowAd = true;
+                    console.log("Ad Ready Again");
+                }, 900000); 
+            }
+        }
+
+        // Container Click Handler
+        function handleContainerClick() {
+            triggerAd();
+            toggleControls();
+        }
 
         let player;
         const video = document.getElementById('video');
@@ -147,56 +207,55 @@
                 const targetId = urlParams.get('id');
 
                 if (targetId) {
-                    fetchGitHubData(targetId);
+                    fetchData(targetId);
                 } else {
                     showError("Error: Add ?id=NAME");
                 }
-
             } else {
                 showError("Browser Not Supported");
             }
         }
 
-        async function fetchGitHubData(targetId) {
+        async function fetchData(targetId) {
             try {
                 const response = await fetch(DATABASE_URL);
-                const textData = await response.text();
-                let channels = JSON.parse(textData.trim().startsWith('[') ? textData : `[${textData.replace(/}\s*{/g, "},{")}]`);
-                
+                let textData = await response.text();
+                textData = textData.trim();
+                // JSON Fixer
+                if (textData.endsWith('},')) textData = textData.slice(0, -1);
+                if (!textData.endsWith(']')) textData += ']';
+                if (!textData.startsWith('[')) textData = '[' + textData;
+
+                let channels = JSON.parse(textData);
                 const channel = channels.find(c => c.id === targetId);
                 
                 if (channel) {
-                    let k1 = null, k2 = null;
-                    if(channel.key) [k1, k2] = channel.key.split(':');
-                    loadPlayer(channel.mpd || channel.m3u8, k1, k2);
+                    let drmConfig = {};
+                    // Key Logic
+                    if (channel.keys && typeof channel.keys === 'object') {
+                        const keyId = Object.keys(channel.keys)[0];
+                        const keyValue = channel.keys[keyId];
+                        drmConfig = { clearKeys: { [keyId]: keyValue } };
+                    }
+                    else if (channel.key && typeof channel.key === 'string') {
+                        const [k1, k2] = channel.key.split(':');
+                        drmConfig = { clearKeys: { [k1]: k2 } };
+                    }
+                    loadPlayer(channel.url || channel.mpd || channel.m3u8, drmConfig);
                 } else {
                     showError("Channel ID Not Found");
                 }
             } catch (err) { showError("Database Error"); }
         }
 
-        async function loadPlayer(url, k1, k2) {
+        async function loadPlayer(url, drmConfig) {
             errorMsg.style.display = 'none';
-            // ফাস্ট স্টার্ট + নো ডিলে
+            // Fast Start Config
             const config = {
-                streaming: { 
-                    bufferingGoal: 0.5, 
-                    rebufferingGoal: 0.01, 
-                    bufferBehind: 0, 
-                    lowLatencyMode: true,
-                    jumpLargeGaps: true
-                },
-                manifest: {
-                    dash: {
-                        ignoreSuggestedPresentationDelay: true, 
-                        clockSyncUri: ''
-                    }
-                },
-                abr: { enabled: true, defaultBandwidthEstimate: 400000 }
+                streaming: { bufferingGoal: 2, rebufferingGoal: 0.01, bufferBehind: 0, lowLatencyMode: true },
+                abr: { enabled: true, defaultBandwidthEstimate: 400000 },
+                drm: drmConfig
             };
-
-            if (k1 && k2) config.drm = { clearKeys: { [k1]: k2 } };
-            
             player.configure(config);
             try {
                 await player.load(url);
@@ -207,57 +266,25 @@
             } catch (e) { showError("Stream Offline"); }
         }
 
-        function showError(msg) {
-            errorMsg.style.display = 'block';
-            errorMsg.innerText = msg;
-            spinner.style.display = 'none';
-        }
-
+        function showError(msg) { errorMsg.style.display = 'block'; errorMsg.innerText = msg; spinner.style.display = 'none'; }
         function openMenu(id) { closeAllMenus(); document.getElementById('popup-overlay').style.display = 'block'; document.getElementById(id).style.display = 'flex'; }
         function closeAllMenus() { document.getElementById('popup-overlay').style.display = 'none'; document.querySelectorAll('.popup-menu').forEach(m => m.style.display = 'none'); }
-        
-        function updateMenus() {
-            const q = document.getElementById('quality-menu');
-            q.innerHTML = `<div style="padding:12px;font-weight:bold;border-bottom:1px solid #333;display:flex;justify-content:space-between">Quality <span onclick="closeAllMenus()" style="cursor:pointer">×</span></div><div class="popup-item" onclick="setQ('auto')">Auto <span class="kbps">Rec.</span></div>`;
-            const tracks = player.getVariantTracks();
-            const seen = new Set();
-            tracks.sort((a,b) => b.height - a.height).forEach(t => {
-                if(t.height && !seen.has(t.height)) {
-                    seen.add(t.height);
-                    q.innerHTML += `<div class="popup-item" onclick="setQ(${t.height})">${t.height}p <span class="kbps">${Math.round(t.bandwidth/1000)} kbps</span></div>`;
-                }
-            });
-            const a = document.getElementById('audio-menu');
-            a.innerHTML = `<div style="padding:12px;font-weight:bold;border-bottom:1px solid #333;display:flex;justify-content:space-between">Audio <span onclick="closeAllMenus()" style="cursor:pointer">×</span></div>`;
-            player.getAudioLanguages().forEach(l => a.innerHTML += `<div class="popup-item" onclick="setA('${l}')">${l.toUpperCase()}</div>`);
+        function updateMenus() { 
+            const q = document.getElementById('quality-menu'); q.innerHTML = `<div style="padding:12px;font-weight:bold;border-bottom:1px solid #333;display:flex;justify-content:space-between">Quality <span onclick="closeAllMenus()" style="cursor:pointer">×</span></div><div class="popup-item" onclick="setQ('auto')">Auto <span class="kbps">Rec.</span></div>`; const tracks = player.getVariantTracks(); const seen = new Set(); tracks.sort((a,b) => b.height - a.height).forEach(t => { if(t.height && !seen.has(t.height)) { seen.add(t.height); q.innerHTML += `<div class="popup-item" onclick="setQ(${t.height})">${t.height}p <span class="kbps">${Math.round(t.bandwidth/1000)} kbps</span></div>`; } });
+            const a = document.getElementById('audio-menu'); a.innerHTML = `<div style="padding:12px;font-weight:bold;border-bottom:1px solid #333;display:flex;justify-content:space-between">Audio <span onclick="closeAllMenus()" style="cursor:pointer">×</span></div>`; player.getAudioLanguages().forEach(l => a.innerHTML += `<div class="popup-item" onclick="setA('${l}')">${l.toUpperCase()}</div>`);
         }
-
         function setQ(h) { h==='auto'?player.configure({abr:{enabled:true}}):(player.configure({abr:{enabled:false}}),player.selectVariantTrack(player.getVariantTracks().find(x=>x.height==h),true)); closeAllMenus(); }
         function setA(l) { player.selectAudioLanguage(l); closeAllMenus(); }
-
-        function startTimer() {
-            video.ontimeupdate = () => {
-                if(player.isLive()) {
-                    const lat = player.seekRange().end - video.currentTime;
-                    lat < 5 ? (document.getElementById('time-display').innerHTML = '<span style="color:#e50914">●</span> LIVE', document.getElementById('seek-fill').style.width = '100%') 
-                            : (document.getElementById('time-display').innerText = "-" + formatTime(lat), document.getElementById('time-display').style.color = "#ccc", document.getElementById('seek-fill').style.width = (((video.currentTime - player.seekRange().start)/(player.seekRange().end - player.seekRange().start))*100) + '%');
-                } else {
-                    document.getElementById('seek-fill').style.width = ((video.currentTime/video.duration)*100) + '%';
-                    document.getElementById('time-display').innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration);
-                }
-            };
-        }
+        function startTimer() { video.ontimeupdate = () => { if(player.isLive()) { const lat = player.seekRange().end - video.currentTime; lat < 5 ? (document.getElementById('time-display').innerHTML = '<span style="color:#e50914">●</span> LIVE', document.getElementById('seek-fill').style.width = '100%') : (document.getElementById('time-display').innerText = "-" + formatTime(lat), document.getElementById('time-display').style.color = "#ccc", document.getElementById('seek-fill').style.width = (((video.currentTime - player.seekRange().start)/(player.seekRange().end - player.seekRange().start))*100) + '%'); } else { document.getElementById('seek-fill').style.width = ((video.currentTime/video.duration)*100) + '%'; document.getElementById('time-display').innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration); } }; }
         function formatTime(s) { const m = Math.floor(s / 60), sec = Math.floor(s % 60); return `${m}:${sec < 10 ? '0' : ''}${sec}`; }
         function skip(v) { video.currentTime += v; showControls(); }
         function goLive() { if(player.isLive()) video.currentTime = player.seekRange().end - 0.5; }
         function seekVideo(e) { const r = e.currentTarget.getBoundingClientRect(), p = (e.clientX - r.left) / r.width; player.isLive() ? video.currentTime = player.seekRange().start + ((player.seekRange().end - player.seekRange().start) * p) : video.currentTime = p * video.duration; }
-        
         function togglePlay() { video.paused ? (video.play(), updIcon('pause')) : (video.pause(), updIcon('play_arrow')); showControls(); }
         function updIcon(i) { document.getElementById('play-icon').innerText = i; document.getElementById('center-play-icon').innerText = i; }
         function toggleMute() { video.muted = !video.muted; document.getElementById('vol-icon').innerText = video.muted ? 'volume_off' : 'volume_up'; }
         function toggleFull() { !document.fullscreenElement ? document.getElementById('video-container').requestFullscreen() : document.exitFullscreen(); }
         function togglePiP() { document.pictureInPictureElement ? document.exitPictureInPicture() : video.requestPictureInPicture(); }
-        
         function toggleControls() { document.getElementById('controls').style.opacity === '1' ? hideControls() : showControls(); }
         function showControls() { document.getElementById('controls').style.opacity = '1'; document.getElementById('center-controls').style.opacity = '1'; document.getElementById('video-container').style.cursor = 'default'; clearTimeout(hideTimeout); if(!video.paused) hideTimeout = setTimeout(hideControls, 3000); }
         function hideControls() { if(!video.paused && document.getElementById('popup-overlay').style.display !== 'block') { document.getElementById('controls').style.opacity = '0'; document.getElementById('center-controls').style.opacity = '0'; document.getElementById('video-container').style.cursor = 'none'; } }
