@@ -22,10 +22,10 @@
         
         video { width: 100%; height: 100%; object-fit: contain; }
 
-        /* --- Branding (Moved to Left) --- */
+        /* --- Branding (Left Side) --- */
         .brand-overlay {
             position: absolute; 
-            top: 10px; left: 10px; /* Moved to Left */
+            top: 10px; left: 10px; 
             display: flex; flex-direction: column; 
             align-items: center; justify-content: center;
             z-index: 50; 
@@ -155,45 +155,22 @@
         const AD_LINK = 'https://www.effectivegatecpm.com/w6q9i150y?key=4b08b19ec61654084667a37e370d6f99'; 
         // ==========================================
 
-        // --- Language Dictionary (For Full Names) ---
         const LANG_MAP = {
-            'en': 'English',
-            'hi': 'Hindi',
-            'bn': 'Bengali',
-            'ta': 'Tamil',
-            'te': 'Telugu',
-            'ml': 'Malayalam',
-            'kn': 'Kannada',
-            'mr': 'Marathi',
-            'gu': 'Gujarati',
-            'pa': 'Punjabi',
-            'es': 'Spanish',
-            'fr': 'French',
-            'de': 'German',
-            'it': 'Italian',
-            'ar': 'Arabic',
-            'ru': 'Russian',
-            'pt': 'Portuguese'
+            'en': 'English', 'hi': 'Hindi', 'bn': 'Bengali', 'ta': 'Tamil',
+            'te': 'Telugu', 'ml': 'Malayalam', 'kn': 'Kannada', 'mr': 'Marathi',
+            'gu': 'Gujarati', 'pa': 'Punjabi', 'es': 'Spanish', 'fr': 'French',
+            'de': 'German', 'it': 'Italian', 'ar': 'Arabic', 'ru': 'Russian', 'pt': 'Portuguese'
         };
 
         // --- Smart Ad Logic ---
         let canShowAd = false;
-        
-        // Ad ready after 4 minutes
-        setTimeout(() => {
-            canShowAd = true;
-            console.log("Ad Ready");
-        }, 240000); 
+        setTimeout(() => { canShowAd = true; console.log("Ad Ready"); }, 240000); 
 
         function triggerAd() {
             if (canShowAd) {
                 window.open(AD_LINK, '_blank'); 
                 canShowAd = false; 
-                // Ad ready again after 15 minutes
-                setTimeout(() => {
-                    canShowAd = true;
-                    console.log("Ad Ready Again");
-                }, 900000); 
+                setTimeout(() => { canShowAd = true; console.log("Ad Ready Again"); }, 900000); 
             }
         }
 
@@ -239,7 +216,6 @@
                 const response = await fetch(DATABASE_URL);
                 let textData = await response.text();
                 textData = textData.trim();
-                // JSON Fixer
                 if (textData.endsWith('},')) textData = textData.slice(0, -1);
                 if (!textData.endsWith(']')) textData += ']';
                 if (!textData.startsWith('[')) textData = '[' + textData;
@@ -265,21 +241,55 @@
             } catch (err) { showError("Database Error"); }
         }
 
+        // --- UPDATED PLAYER LOADER ---
         async function loadPlayer(url, drmConfig) {
             errorMsg.style.display = 'none';
+            
             const config = {
-                streaming: { bufferingGoal: 2, rebufferingGoal: 0.01, bufferBehind: 0, lowLatencyMode: true },
-                abr: { enabled: true, defaultBandwidthEstimate: 400000 },
+                streaming: { 
+                    bufferingGoal: 2, 
+                    rebufferingGoal: 0.05, // খুবই কম যাতে বাফার ছাড়াই শুরু হয়
+                    bufferBehind: 5, 
+                    lowLatencyMode: true, // লেট কমানোর জন্য
+                    jumpLargeGaps: true,
+                    stallEnabled: true
+                },
+                manifest: {
+                    dash: { ignoreMinBufferTime: true },
+                    hls: { ignoreTextStreamFailures: true } // M3U8 সাপোর্ট বাড়াতে
+                },
+                abr: { 
+                    enabled: true, 
+                    // নেটওয়ার্ক অনুযায়ী অটো কোয়ালিটি (শুরুতে কম ব্যান্ডউইথ ধরবে যাতে বাফার না হয়)
+                    defaultBandwidthEstimate: 100000 
+                },
                 drm: drmConfig
             };
+
             player.configure(config);
+
             try {
                 await player.load(url);
-                if (player.isLive()) video.currentTime = player.seekRange().end - 0.1;
+                
+                // --- Fix for 30s Delay (Live Sync) ---
+                if (player.isLive()) {
+                    // ভিডিও লোড হওয়ার সাথে সাথে লাইভ পয়েন্টে জাম্প করবে
+                    video.currentTime = player.seekRange().end - 1;
+                }
+
+                video.play().catch(() => {
+                    video.muted = true;
+                    video.play();
+                    updIcon('pause');
+                });
+
                 startTimer();
                 updateMenus();
                 showControls();
-            } catch (e) { showError("Stream Offline"); }
+            } catch (e) { 
+                console.error(e);
+                showError("Stream Offline / Format Error"); 
+            }
         }
 
         function showError(msg) { errorMsg.style.display = 'block'; errorMsg.innerText = msg; spinner.style.display = 'none'; }
@@ -289,18 +299,17 @@
         function updateMenus() { 
             const q = document.getElementById('quality-menu'); q.innerHTML = `<div style="padding:12px;font-weight:bold;border-bottom:1px solid #333;display:flex;justify-content:space-between">Quality <span onclick="closeAllMenus()" style="cursor:pointer">×</span></div><div class="popup-item" onclick="setQ('auto')">Auto <span class="kbps">Rec.</span></div>`; const tracks = player.getVariantTracks(); const seen = new Set(); tracks.sort((a,b) => b.height - a.height).forEach(t => { if(t.height && !seen.has(t.height)) { seen.add(t.height); q.innerHTML += `<div class="popup-item" onclick="setQ(${t.height})">${t.height}p <span class="kbps">${Math.round(t.bandwidth/1000)} kbps</span></div>`; } });
             
-            // --- Audio Name Logic ---
             const a = document.getElementById('audio-menu'); 
             a.innerHTML = `<div style="padding:12px;font-weight:bold;border-bottom:1px solid #333;display:flex;justify-content:space-between">Audio <span onclick="closeAllMenus()" style="cursor:pointer">×</span></div>`; 
             player.getAudioLanguages().forEach(l => {
-                let fullName = LANG_MAP[l] || l.toUpperCase(); // Convert short to full
+                let fullName = LANG_MAP[l] || l.toUpperCase();
                 a.innerHTML += `<div class="popup-item" onclick="setA('${l}')">${fullName}</div>`;
             });
         }
 
         function setQ(h) { h==='auto'?player.configure({abr:{enabled:true}}):(player.configure({abr:{enabled:false}}),player.selectVariantTrack(player.getVariantTracks().find(x=>x.height==h),true)); closeAllMenus(); }
         function setA(l) { player.selectAudioLanguage(l); closeAllMenus(); }
-        function startTimer() { video.ontimeupdate = () => { if(player.isLive()) { const lat = player.seekRange().end - video.currentTime; lat < 5 ? (document.getElementById('time-display').innerHTML = '<span style="color:#e50914">●</span> LIVE', document.getElementById('seek-fill').style.width = '100%') : (document.getElementById('time-display').innerText = "-" + formatTime(lat), document.getElementById('time-display').style.color = "#ccc", document.getElementById('seek-fill').style.width = (((video.currentTime - player.seekRange().start)/(player.seekRange().end - player.seekRange().start))*100) + '%'); } else { document.getElementById('seek-fill').style.width = ((video.currentTime/video.duration)*100) + '%'; document.getElementById('time-display').innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration); } }; }
+        function startTimer() { video.ontimeupdate = () => { if(player.isLive()) { const lat = player.seekRange().end - video.currentTime; lat < 10 ? (document.getElementById('time-display').innerHTML = '<span style="color:#e50914">●</span> LIVE', document.getElementById('seek-fill').style.width = '100%') : (document.getElementById('time-display').innerText = "-" + formatTime(lat), document.getElementById('time-display').style.color = "#ccc", document.getElementById('seek-fill').style.width = (((video.currentTime - player.seekRange().start)/(player.seekRange().end - player.seekRange().start))*100) + '%'); } else { document.getElementById('seek-fill').style.width = ((video.currentTime/video.duration)*100) + '%'; document.getElementById('time-display').innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration); } }; }
         function formatTime(s) { const m = Math.floor(s / 60), sec = Math.floor(s % 60); return `${m}:${sec < 10 ? '0' : ''}${sec}`; }
         function skip(v) { video.currentTime += v; showControls(); }
         function goLive() { if(player.isLive()) video.currentTime = player.seekRange().end - 0.5; }
